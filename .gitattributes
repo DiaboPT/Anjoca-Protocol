@@ -3,3 +3,4 @@
 /Assets/ANJOCA/HD_Materials/Relva/forrest_ground_01_diff_4k.png filter=lfs diff=lfs merge=lfs -text
 /Assets/ANJOCA/HD_Materials/Relva/forrest_ground_01_nor_gl_4k.png filter=lfs diff=lfs merge=lfs -text
 /Assets/ANJOCA/Models/Inimigos/Soldado/Ch15_nonPBR.fbx filter=lfs diff=lfs merge=lfs -text
+*.fbx filter=lfs diff=lfs merge=lfs -text

@@ -27,7 +27,7 @@ public class ModoTeste : MonoBehaviour
     [Header("Aprimoramentos do Fato")]
     [Tooltip("Pode ficar vazio: se o SuitAbilities estiver no Player, é encontrado sozinho.")]
     public SuitAbilities aprimoramentos;
-    [Tooltip("Em teste, os módulos de Salto, Blindagem e Precisão ficam todos desbloqueados.")]
+    [Tooltip("Em teste, os módulos de Salto, Blindagem, Precisão, Visor térmico e Velocidade ficam todos desbloqueados.")]
     public bool desbloquearTudoEmTeste = true;
 
     [Header("Energia máxima do Fato (normal / teste)")]
@@ -62,7 +62,7 @@ public class ModoTeste : MonoBehaviour
     bool modoAplicado;
 
     // O que o jogador já tinha apanhado antes de entrar em teste (para repor no modo normal)
-    bool tinhaSalto, tinhaBlindagem, tinhaPrecisao;
+    bool tinhaSalto, tinhaBlindagem, tinhaPrecisao, tinhaVisor, tinhaVelocidade;
     bool desbloqueioAplicado;
 
     void Awake()
@@ -143,10 +143,14 @@ public class ModoTeste : MonoBehaviour
             tinhaSalto = aprimoramentos.jumpUnlocked;
             tinhaBlindagem = aprimoramentos.armorUnlocked;
             tinhaPrecisao = aprimoramentos.precisionUnlocked;
+            tinhaVisor = aprimoramentos.thermalUnlocked;
+            tinhaVelocidade = aprimoramentos.speedUnlocked;
 
             aprimoramentos.jumpUnlocked = true;
             aprimoramentos.armorUnlocked = true;
             aprimoramentos.precisionUnlocked = true;
+            aprimoramentos.thermalUnlocked = true;
+            aprimoramentos.speedUnlocked = true;
             desbloqueioAplicado = true;
         }
         else if (!desbloquear && desbloqueioAplicado)
@@ -155,11 +159,15 @@ public class ModoTeste : MonoBehaviour
             aprimoramentos.jumpUnlocked = tinhaSalto;
             aprimoramentos.armorUnlocked = tinhaBlindagem;
             aprimoramentos.precisionUnlocked = tinhaPrecisao;
+            aprimoramentos.thermalUnlocked = tinhaVisor;
+            aprimoramentos.speedUnlocked = tinhaVelocidade;
 
             // Desliga os que ficaram bloqueados mas estavam ligados
             if (!tinhaSalto) aprimoramentos.jumpActive = false;
             if (!tinhaBlindagem) aprimoramentos.armorActive = false;
             if (!tinhaPrecisao) aprimoramentos.precisionActive = false;
+            if (!tinhaVisor) aprimoramentos.thermalActive = false;
+            if (!tinhaVelocidade) aprimoramentos.speedActive = false;
             desbloqueioAplicado = false;
         }
     }

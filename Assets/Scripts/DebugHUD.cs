@@ -9,6 +9,8 @@ public class DebugHUD : MonoBehaviour
     PlayerStats stats;
     SuitAbilities abilities;
     PlayerMovement movement;
+    Weapon arma;                             // para o contador de balas
+    GUIStyle estiloBalas;                    // letra maior, alinhada à direita
     
     public TextMeshProUGUI textoResultado;   // o TextoResultado do Canvas
     bool mostrouDerrota = false;             // para escrever só uma vez
@@ -18,6 +20,8 @@ public class DebugHUD : MonoBehaviour
         stats = GetComponent<PlayerStats>();
         abilities = GetComponent<SuitAbilities>();
         movement = GetComponent<PlayerMovement>();
+        // o Weapon está dentro da Main Camera, que é filha do jogador
+        arma = GetComponentInChildren<Weapon>(true);
     }
 
     void Update()
@@ -54,10 +58,20 @@ public class DebugHUD : MonoBehaviour
         {
             GUI.Label(new Rect(20, 76, 400, 20), "[1] Salto " + OnOff(abilities.jumpActive) + "  (altura " + movement.GetJumpHeight() + " m)");
             GUI.Label(new Rect(20, 94, 400, 20), "[2] Blindagem " + OnOff(abilities.armorActive));
-            GUI.Label(new Rect(20, 112, 400, 20), "[3] Precisão " + OnOff(abilities.precisionActive) + "  · gasto " + abilities.GetDrainPerSecond().ToString("0") + "/s");
+            GUI.Label(new Rect(20, 112, 400, 20), "[3] Precisão " + OnOff(abilities.precisionActive));
+            GUI.Label(new Rect(20, 130, 400, 20), "[4] Visor térmico " + OnOff(abilities.thermalActive));
+            GUI.Label(new Rect(20, 148, 400, 20), "[5] Velocidade " + OnOff(abilities.speedActive) + "  · gasto " + abilities.GetDrainPerSecond().ToString("0") + "/s");
         }
         if (ModoTeste.Ativo)
-            GUI.Label(new Rect(20, 136, 400, 20), "Teste: K dano · L laser drone · H curar");
+            GUI.Label(new Rect(20, 172, 400, 20), "Teste: K dano · L laser drone · H curar");
+
+        // balas no canto de baixo à direita (BALAS: 30 / 90, A RECARREGAR... ou SEM BALAS)
+        if (arma != null)
+        {
+            if (estiloBalas == null)
+                estiloBalas = new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, alignment = TextAnchor.LowerRight };
+            GUI.Label(new Rect(Screen.width - 320, Screen.height - 50, 300, 30), arma.TextoBalas, estiloBalas);
+        }
 
         // if (stats.isDead)
         //     GUI.Label(new Rect(Screen.width / 2 - 60, Screen.height / 2, 200, 30), "SINAL PERDIDO");
