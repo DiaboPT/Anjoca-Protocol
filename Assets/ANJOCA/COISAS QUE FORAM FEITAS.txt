@@ -249,3 +249,8 @@ adicionados os power-ups que faltavam
     
 remoção dos inimigos amtigos (capsulas desativadas)
 
+
+integração do terreno
+integração da chuva
+apaguei vegetacao/pinheiro porque nao estava ser usado
+
