@@ -1,0 +1,256 @@
+Layers do Player e Inimigo
+Navmesh (com layers de player e INimigos removidas)
+Mavmesh Modifier nos IObjetos (para os remover da MavMesh)
+
+Alterei função guard para andar pelos walkpoints por ordem
+
+
+LineRenderer para mostrar os trajetos
+
+Apagar  o Nav Mesh Agent do EnemyDrone para usar a função VoarPara()
+
+inimigos a seguir até mais perto
+
+
+comentei shootingRadius das funções PursuePlayer  e enemyHitDamage no Enemy.cs e EnemyDrone.cs 
+para os inimigos se aproximarem mais 
+
+Função Dispara() invocada por PursuePlayer() e ShootPlayer()
+A ideia é disparar apartir do momento que vê e perseguir a disparar enão só quando chega perto
+
+
+implementei a posição e rotação inicial para não ter de usar walkpoints nestes inimigos fixos
+
+reiniciar vision e shooting radius quando inimigos quando perde o contacto com o player
+
+
+
+okay não vou implementar essa melhorias agora. quero apenas que só saio "bala" no momento clique e não saiam inifinitas balas enquanto tenho a tecla carregada
+
+
+Desenhar raio de deteção de cada inimigo
+
+implementar zonas de deteção para os inimigos me detetarem quando entro em certos sitios (Zonas de Alerta)
+
+Alterar material dos inimigos mortos
+
+vida do lider a 400. outros a 100
+
+adicionado armas aos inimigos e raios para perceber os tiros dos mesmo
+
+portas que só abrem com chave
+
+pequena animação das portas a abrir
+
+pequena animação de soldado a morrer -> função Cair()
+
+pequena animação de drone a morrer -> liga fisica
+
+pequena animação do player a cair quando morre
+
+ativada a auto-destruição
+
+
+V 0.3
+------------------------------
+correção das funções 	TakeDamage	e playerHitDamage
+-> DEBUG usava uma e inimigos ao atingir usava outr. armadura não funcionava
+
+Reposicionamento do Abrigo e da posição inicial do player
+
+adicionar limites
+
+corrigir morte sem ativação de auto-destruição (em vez de mostrar um GUI.Label mostra em TextMeshPro)
+-> alteração em DebugHUD.cs
+
+Modo Teste
+-> Possibilidade de ativar/ desativar coisas alterar parâmetros quando se liga ou desliga o modo de teste
+
+corrigido tiro pelas portas
+
+
+V 0.4
+------------------------------
+adicionadas texturas
+
+mira mais precisa com zoom
+-> apenas funciona depois de apanhar o respetivo módulo e carregar na tecla 3
+
+MINIMAPA
+-> Quando é que aparece o vermelho do inimigo no minimapa
+O inimigo vê-te: estás dentro do raio de visão dele (o Vision Radius do Inspector). Esse raio sobe para 30 m quando te persegue e para 40 m quando leva um tiro, e uma ZonaAlerta também o aumenta.
+  Estás perto: a menos de 15 m dele, mesmo que não te veja. É o Raio Perto do ícone.
+  
+adicionado um modelo de inimigo
+adicionado um modelo de arma
+animações
+ficheiro enemy alterado para as animações
+correção rotação do soldado quando dispara
+script weapon.cs alterado para headshots
+colliders enemy alterados para headshots
+trocado o tipo de shootingArea de Câmara paraobjeto simples
+efeito particle de disparo do inimigo
+efeito sonoro de disparo inimigo
+efeito sonoro do inimigo ao levar tiros
+efeito sonoro do iniimigo a morrer
+
+animação do soldado a reagir aos tiros (hit reaction)
+animação diferente ao morre de headshot
+
+
+enquanto estiver a receber tiros nao dispara logo ( enquanto reproduz a animação)
+
+Tempo Atordoado: passa a ser só o mínimo. Com 0.3 manda a animação. 
+Se puseres 0, conta só a animação. Se o puseres maior do que a animação, ele fica atordoado mais tempo do que o solavanco.
+
+mira dos inimigos imperfeita (com desvios)
+andar incrementa 2.5º+2º (4.5º)
+---------------------------------------------------------------------
+Distância	Desvio máximo (parado, 2.5°)	A andar (4.5°)
+5 m	        22 cm	                        39 cm
+10 m	    44 cm	                        79 cm
+20 m	    87 cm	                        1,57 m
+
+
+efieto sonoro quando inimigo deteta jogador
+
+recarregar de arma do inimigo
+-> animação
+-> som
+-> vozes (neste momento a vazio)
+-> etc.
+
+inimigo passa a ter balas / carregadores
+
+adicionada barra vida inimigo no modo teste
+
+adicionado efeito de sangue nos soldados inimigos
+->efeito vfx
+->alterado script weapon e enemy
+
+FOI FEITO UM MODO DEBUG (TECLA F2)
+-> desta forma é possível ter acesso a variáveis e parâmetros "on-the-fly"
+
+FOI FEITO UM MODO DEBUG VISUAL (TECLA F3)
+-> desta forma é possível visualizar trajetos, vida dos inimigos, etc. visualmente
+-> balas dos inimigos e do player passam apenas a estar visiveis através deste modo
+
+no modo teste foi adicionado
+-> power-ups são automaticamente ativados quando entro no modo
+-> quanto cada bala tira aos inimigos
+
+-> foi feito um prefab do soldado inimigo
+
+
+V 0.4.1
+------------------------------
+
+drones inimigos com modelo, animações, vfx, sons, etc
+drones oscilam para cima e para baixo.
+disparam lasers.
+tem faiscas ao receber tiros
+fazem fumo ao ter menos de 35% de vida
+explodem ao chegar a 0
+
+-> O que mudou no código dos Drones
+Corpo por código (LateUpdate): corre depois das animações. RodarHelices() roda cada hélice no Eixo Helices. MexerCorpo() soma ao Corpo a oscilação (um seno), a inclinação (a velocidade do drone passada para os eixos dele: andar para a frente inclina o nariz para baixo, para o lado inclina de lado) e o solavanco. ApontarTorreta() roda a torreta aos poucos para o LookPoint.
+Velocidade: o drone não tem NavMeshAgent, por isso a velocidade é calculada todos os frames com (posição atual − posição anterior) ÷ tempo. Serve para o parâmetro Speed, a inclinação, o tom do motor e a pontaria.
+Animator seguro: no Awake, o script guarda os nomes dos parâmetros que existem no Animator. AnimFloat, AnimBool e AnimTrigger só mexem nos que existem. Sem Animator, não fazem nada.
+Tiro laser: o Disparar() ganhou a pontaria imperfeita do soldado, o brilho, a luz e o som, e não dispara durante o Tempo Atordoado. Depois do raycast, MostrarLaser() põe as duas pontas do RaioLaser (da arma até onde bateu) e ApagarLaser() baixa o widthMultiplier até 0. Se acertar no jogador, chama TakeDamage(giveDamage) e DrainEnergy(energiaDrenada). Se bater em qualquer coisa, cria o Efeito Impacto Laser nesse ponto. ShootingRaycastArea passou de Camera para Transform.
+Dano: enemyDroneHitDamage() toca o som metálico, soma o solavanco, faz SetTrigger("Hit") (se existir) e liga o fumo abaixo de Vida Fumo. MostrarFaiscas() é nova e é chamada pelo Weapon.
+Morte: enemyDie() cria a explosão, toca o som, acende a luz (ApagarLuzExplosao()), cala o motor (DesligarMotor()), liga o fumo e faz SetTrigger("Die"). O resto (material preto, Rigidbody, rodar ao cair, Destroy aos 5 s) ficou igual.
+Barra de vida: o BarraVidaInimigo deixou de exigir o Enemy e lê a vida do Enemy ou do EnemyDrone, o que estiver no objeto.
+
+lider inimigo com modelo, animações, vfx, sons, etc
+
+Script Lider.cs
+----------------
+Cada vez que lhe acertas, o Weapon pergunta ao Lider quanto dano conta:
+• No corpo, o colete corta 25%. Pistola 20 → 15, carabina 12 → 9. São 20 tiros de pistola para os 300 de vida.
+• Na cabeça, conta a dobrar e o colete não protege, mas não mata logo como nos soldados. Pistola 40 (8 tiros), carabina 24 (13 tiros). Se morrer com um tiro na cabeça, faz a animação DeathHead.
+• Já morto, não conta mais nada.
+
+No primeiro tiro (corpo ou cabeça), chama os reforços uma única vez. Liga os soldados que puseres na lista Reforcos, que estão desligados na cena, e soma-lhes 30 m de visão para virem direitos a ti. Se puseres um som em Voz Reforcos, toca-o.
+
+O que não faz: não cria soldados novos (entram os que puseres na lista), não segura o líder na sala (isso é o Shooting Radius e o Walk Points vazio do Enemy) e não tem nada a ver com o lockdown.
+
+
+Chama o Reforcos_Oeste e Patrulha_Oeste
+
+-> Corrigido visionRadius = Mathf.Max(30f, visionRadiusInicial + bonusZona);
+-> Desta forma faz o maximo entre os dois para nao ter um raio de visao de 40 (por exemplo) e no frame a seguir (enquanto ainda vê o jogador) passar logo para 30
+
+
+corrigido lider chamar os reforcos cad vez que leva tiros
+
+corrigido -> som do lider e chamada de reforços do lider acontecessem apenas se voltar a entrar na visioRadius do lider (se sair e voltar a entrar)
+
+-> 3 colliders no lider
+-> (cabeça , colete (sobrepõe por fora o capsule collider), resto)
+Onde disparas       Console	                Present Health desce
+Cabeça	            Hit: mixamorig:Head	    40
+Peito ou barriga	Hit: Colete	            15
+Pernas	            Hit: Lider_Inimigo	    20
+
+-> foi criado um prefab do lider
+
+Só é possível ativar a auto-destruição depois de matar o lider
+
+
+
+
+
+
+
+personagem principal com modelo, animações, vfx, sons, etc
+---------------------
+-> 1. Aparecer só sombra
+-> 2. Braços à frente da câmara
+
+usado um script CorpoSombra.cs  -> Lê a velocidade do CharacterController do Player e passa-a ao Animator (Idle / Walk / Run).
+usado um script BracosFPS.cs    -> Braços do Jogador -  mantém os braços no sítio certo em relação à câmara e dá um pequeno recuo em cada tiro.
+
+
+-> adicionado campos aos weapon.cs de sons e vfx
+
+cabeça é apagado no script BracosFPS
+camara está dentro da cabeça
+
+micro-correção da animação da sombra para aparecer a arma
+
+novas implementações no script weapon.cs para tudo relativamente a balas, carregadores e recarregamento
+
+melhorar crosshair -> aplicada a mira dinâmica (abre ao andar e fecha ao ao parar)
+desativada a cruz antiga
+aplicar filtro mira precisa -> foram usados volumes
+mira a deslocar-se com o movimento dos braços
+
+Modelo de árvore
+-> Asset "Conifers [BOTD]"
+
+
+
+marcas de impacto de balas para jogador e inimigos soldados e lider.
+marcas de impacto de laser para inimigos drone.
+->existe um script para o efeito
+        o qe o script faz
+        Limite de marcas. Com a M4 em automático, se disparares muito ficas com centenas de decals ao mesmo tempo e o jogo fica mais pesado. O script nunca deixa passar de 40 de bala e 20 de laser.
+        Desaparecer aos poucos. Com o Destroy, a marca some de repente ao fim dos 20 segundos.
+        Brilho do laser. Para a queimadura arrefecer, alguém tem de baixar o brilho frame a frame, e isso é sempre código.
+        Código num só sítio. A verificação “não pôr marca em inimigos nem no jogador” e o resto ficariam repetidos no Weapon, no Enemy e no EnemyDrone.
+
+
+
+adicionados os power-ups que faltavam
+-> velocidade
+-> visao termica
+    visao termica tem dois filtrotermico e alvotermico
+    cada inimigo ou alvo temo scvript associado
+    
+remoção dos inimigos amtigos (capsulas desativadas)
+
+
+integração do terreno
+integração da chuva
+apaguei vegetacao/pinheiro porque nao estava ser usado
+

@@ -9,6 +9,7 @@ public class TerminalAutodestruicao : MonoBehaviour
     [Header("Ativação")]
     public Key tecla = Key.E;                 // tecla para ativar
     public PortaComando[] portas;             // portas da sala de comando (basta uma aberta)
+    public Enemy lider;                       // líder inimigo: tem de estar morto para ativar (vazio = não verifica)
 
     [Header("Explosão")]
     public float tempoContagem = 60f;         // segundos até explodir
@@ -50,7 +51,7 @@ public class TerminalAutodestruicao : MonoBehaviour
 
         inventario = inv;
         if (!ativado && textoTimer != null)
-            textoTimer.text = "[" + tecla + "] Ativar autodestruição";
+            textoTimer.text = TextoAviso();
     }
 
     void OnTriggerExit(Collider other)
@@ -66,6 +67,10 @@ public class TerminalAutodestruicao : MonoBehaviour
     {
         // só funciona com o jogador dentro da zona
         if (inventario == null || Keyboard.current == null) return;
+        
+        // atualiza o aviso a cada frame: muda sozinho quando o líder morre com o jogador na zona
+        if (textoTimer != null) textoTimer.text = TextoAviso();
+        
         if (!Keyboard.current[tecla].wasPressedThisFrame) return;
 
         if (!inventario.temCartao)
@@ -76,6 +81,11 @@ public class TerminalAutodestruicao : MonoBehaviour
         if (!PortaAberta())
         {
             Debug.Log("Acesso negado: a porta da sala de comando está fechada");
+            return;
+        }
+        if (!LiderMorto())
+        {
+            Debug.Log("Acesso negado: o líder ainda está vivo");
             return;
         }
 
@@ -91,6 +101,13 @@ public class TerminalAutodestruicao : MonoBehaviour
         foreach (PortaComando p in portas)
             if (p != null && p.EstaAberta) return true;
         return false;
+    }
+
+    // o líder já morreu. Também conta como morto quando já foi destruído (5 s depois de morrer)
+    bool LiderMorto()
+    {
+        if (lider == null) return true;        // sem líder ligado, ou já destruído
+        return lider.presentHealth <= 0;
     }
 
     void Contagem()
@@ -165,6 +182,14 @@ public class TerminalAutodestruicao : MonoBehaviour
         Destroy(gameObject);   // a zona e o terminal (filho)
     }
 
+    // texto no ecrã enquanto o jogador está na zona do terminal
+    string TextoAviso()
+    {
+        if (!LiderMorto()) return "Mata o líder antes de ativar a autodestruição";
+        return "[" + tecla + "] Ativar autodestruição";
+    }
+    
+    
     // desenha na Scene o raio da explosão (vermelho)
     void OnDrawGizmosSelected()
     {

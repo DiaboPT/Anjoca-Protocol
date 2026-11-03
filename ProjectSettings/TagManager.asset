@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 3
   tags:
   - Head
+  - Colete
   layers:
   - Default
   - TransparentFX
@@ -18,8 +19,8 @@ TagManager:
   - Minimapa
   - Telhado
   - VolumeMinimapa
-  - 
-  - 
+  - VolumeMira
+  - Vegetacao
   - 
   - 
   - 
