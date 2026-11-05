@@ -105,6 +105,14 @@ public class Enemy : MonoBehaviour
    public float shootingRadius;
    public bool playerInVisionRadius;
    public bool playerInShootingRadius;
+
+   [Header("Escuro (quadro elétrico sabotado)")]
+   // Spot Light filha do soldado (na cabeça ou na arma), desligada no Inspector. Acende-se no escuro
+   public Light lanterna;
+   // metros que vê, e até onde dispara, numa ZonaSemEnergia. Não aumenta ao ver-te
+   public float raioVisaoEscuro = 6f;
+   // está numa zona sem energia (aparece no Inspector para ver durante o Play)
+   public bool noEscuro = false;
    
    // Usado para não ser necessário walkPoints nos inimigos fixos
    private Vector3 posicaoInicial;
@@ -167,6 +175,9 @@ public class Enemy : MonoBehaviour
       
       visionRadiusInicial = visionRadius;
       shootingRadiusInicial = shootingRadius;
+
+      // a lanterna só se acende no escuro
+      if (lanterna != null) lanterna.enabled = false;
       
       // a linha começa escondida
       if (linhaTiro != null) linhaTiro.enabled = false;
@@ -189,6 +200,10 @@ public class Enemy : MonoBehaviour
    {
       // morto não faz mais nada até objecto ser destruido 
       if (presentHealth <= 0) return;
+
+      // numa zona sem energia: lanterna acesa e visão curta. Vem antes do CheckSphere,
+      // por isso ganha a tudo o que mexeu no raio no frame anterior (perseguir, ZonaAlerta, reforços, levar um tiro)
+      AtualizarEscuro();
       
       playerInVisionRadius = Physics.CheckSphere(transform.position, visionRadius, playerLayer);
       playerInShootingRadius = Physics.CheckSphere(transform.position, shootingRadius, playerLayer);
@@ -364,6 +379,30 @@ public class Enemy : MonoBehaviour
       shootingRadius = shootingRadiusInicial;
    }
    
+   // quadro elétrico sabotado: decide pela posição do SOLDADO (não pela do jogador)
+   private void AtualizarEscuro()
+   {
+      bool estavaNoEscuro = noEscuro;
+      // mede à altura do peito, para não falhar quando os pés estão mesmo no fundo da caixa
+      noEscuro = ZonaSemEnergia.NoEscuro(transform.position + Vector3.up);
+
+      if (lanterna != null && lanterna.enabled != noEscuro) lanterna.enabled = noEscuro;
+
+      if (noEscuro)
+      {
+         // raio fixo: sem os 30 m da perseguição nem os bónus (ZonaAlerta, reforços, tiro)
+         visionRadius = raioVisaoEscuro;
+         // não dispara mais longe do que vê
+         shootingRadius = Mathf.Min(shootingRadiusInicial, raioVisaoEscuro);
+      }
+      // acabou de sair para uma zona com luz: volta aos raios normais.
+      // se te estiver a ver, a perseguição volta a aumentá-los como sempre
+      else if (estavaNoEscuro)
+      {
+         ReporRaios();
+      }
+   }
+
    // chamada pela ZonaAlerta quando entras ou sais da zona
    public void BonusZona(float valor)
    {
@@ -683,6 +722,11 @@ public class Enemy : MonoBehaviour
       // raio de disparo a vermelho
       Gizmos.color = Color.red;
       Gizmos.DrawWireSphere(transform.position, shootingRadius);
+
+      // visão no escuro (quadro elétrico sabotado) a azul. Desenhada no fim:
+      // no escuro fica por cima da amarela, porque as duas têm o mesmo tamanho
+      Gizmos.color = Color.blue;
+      Gizmos.DrawWireSphere(transform.position, raioVisaoEscuro);
    }
 }
 
