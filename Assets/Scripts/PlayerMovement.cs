@@ -83,6 +83,8 @@ public class PlayerMovement : MonoBehaviour
 
         float speed = walkSpeed;
         if (kb.leftShiftKey.isPressed) speed = runSpeed;
+        // Velocidade do Fato (tecla 5): multiplica o andar e o correr
+        if (abilities != null && abilities.speedActive) speed *= abilities.speedMultiplier;
 
         // --- Saltar e gravidade ---
         if (controller.isGrounded)

@@ -6888,6 +6888,7 @@ GameObject:
   - component: {fileID: 3178520483641928168}
   - component: {fileID: 1575508204525477323}
   - component: {fileID: 1863004394119617178}
+  - component: {fileID: 7482772835472538502}
   m_Layer: 7
   m_Name: Soldado_Modelo
   m_TagString: Untagged
@@ -7227,6 +7228,19 @@ AudioSource:
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
+--- !u!114 &7482772835472538502
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6126416156900498517}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1995918f5ce6aa4bbe114add99c7d1d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::AlvoTermico
+  malhas: []
 --- !u!1 &6141645529120555821
 GameObject:
   m_ObjectHideFlags: 0

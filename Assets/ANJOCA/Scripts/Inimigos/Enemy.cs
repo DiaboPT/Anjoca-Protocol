@@ -118,6 +118,9 @@ public class Enemy : MonoBehaviour
 
    // metros extra de visão dados por uma ZonaAlerta (0 = nenhum)
    private float bonusZona = 0f;
+   
+   // metros extra de visão dados pelo Lider aos reforços (0 = nenhum). Acaba quando te perde de vista
+   private float bonusReforco = 0f;
 
    // ossos do modelo 3D para corrigir a mira (preenchidos no Awake)
    private Transform ossoTronco;
@@ -200,6 +203,11 @@ public class Enemy : MonoBehaviour
          TocarSomAoCalhas(sonsAlerta);
          proximoAlerta = Time.time + intervaloAlerta;
       }
+      
+      // acabou de te perder de vista (no frame anterior via): o bónus de reforço acaba
+      // e o Guard() repõe os valores de defeito
+      if (viaJogador && !playerInVisionRadius) bonusReforco = 0f;
+      
       viaJogador = playerInVisionRadius;
 
       if (!playerInVisionRadius && !playerInShootingRadius) Guard();
@@ -357,7 +365,7 @@ public class Enemy : MonoBehaviour
    // volta aos raios que estavam no Inspector ao carregar Play
    private void ReporRaios()
    {
-      visionRadius = visionRadiusInicial + bonusZona;
+      visionRadius = visionRadiusInicial + bonusZona + bonusReforco;
       shootingRadius = shootingRadiusInicial;
    }
    
@@ -365,6 +373,12 @@ public class Enemy : MonoBehaviour
    public void BonusZona(float valor)
    {
       bonusZona = valor;
+   }
+   
+   // chamada pelo Lider quando chama os reforços: mais visão até te perder de vista
+   public void BonusReforco(float valor)
+   {
+      bonusReforco = valor;
    }
    
    
@@ -380,7 +394,13 @@ public class Enemy : MonoBehaviour
          //
          
          // + vision and shooting radius
-         visionRadius = 30f;
+         //visionRadius = 30f;
+         
+         // faz o maior dos dois
+         visionRadius = Mathf.Max(30f, visionRadiusInicial + bonusZona + bonusReforco);
+         
+         
+         
          // shootingRadius = 16f;
       }
       else
@@ -423,6 +443,9 @@ public class Enemy : MonoBehaviour
          fim = hit.point;
          PlayerStats alvo = hit.transform.GetComponent<PlayerStats>();
          if (alvo != null) alvo.TakeDamage(giveDamage);
+         
+         // buraco de bala no cenário quando falha o jogador
+         MarcasImpacto.Bala(hit);
       }
       // mostra a linha da ponta da arma até onde o tiro acabou (só com o debug visual, F3)
       if (linhaTiro != null)

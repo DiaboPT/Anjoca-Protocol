@@ -5,7 +5,6 @@ using UnityEngine.UI;
 // Só aparece com o debug visual ligado (ModoDebugVisual.BarrasVida; o F3 troca durante o Play).
 // Vai no mesmo objeto do Enemy. É desenhada no ecrã (num Canvas próprio, criado pelo script),
 // por isso não depende das luzes nem da exposição do HDRP.
-[RequireComponent(typeof(Enemy))]
 public class BarraVidaInimigo : MonoBehaviour
 {
    [Header("Posição e tamanho")]
@@ -25,6 +24,8 @@ public class BarraVidaInimigo : MonoBehaviour
    private static Canvas canvasBarras;
 
    private Enemy soldado;
+   // só um dos dois existe neste objeto (soldado ou drone)
+   private EnemyDrone drone;
    private Camera cam;
    private RectTransform fundo;
    private RectTransform enchimento;
@@ -33,7 +34,21 @@ public class BarraVidaInimigo : MonoBehaviour
    private void Start()
    {
       soldado = GetComponent<Enemy>();
+      drone = GetComponent<EnemyDrone>();
+      if (soldado == null && drone == null)
+      {
+         Debug.LogWarning(name + ": a Barra Vida Inimigo tem de estar no mesmo objeto do Enemy ou do EnemyDrone.");
+         enabled = false;
+         return;
+      }
       CriarBarra();
+   }
+
+   // vida de 0 a 1, do soldado ou do drone
+   private float Vida()
+   {
+      if (soldado != null) return Mathf.Clamp01(soldado.presentHealth / soldado.enemyHealth);
+      return Mathf.Clamp01(drone.presentHealth / drone.enemyHealth);
    }
 
    private void CriarBarra()
@@ -75,7 +90,7 @@ public class BarraVidaInimigo : MonoBehaviour
       if (fundo == null) return;
       if (cam == null) cam = Camera.main;
 
-      float vida = Mathf.Clamp01(soldado.presentHealth / soldado.enemyHealth);
+      float vida = Vida();
       bool mostrar = ModoDebugVisual.BarrasVida && vida > 0f && cam != null;
 
       Vector3 ecra = Vector3.zero;
