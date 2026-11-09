@@ -179,9 +179,13 @@ public class Weapon : MonoBehaviour {
                 drone.MostrarFaiscas(hit.point, hit.normal);
                 drone.enemyDroneHitDamage(damage);
             }
-            
-            // buraco de bala no cenário (nos inimigos não faz nada)
-            MarcasImpacto.Bala(hit);
+
+            // sniper da torre da trincheira: o collider está no Sniper_Soldado e o script Sniper no Pivo
+            Sniper sniper = Sniper.Atingido(hit.collider);
+            if (sniper != null) sniper.LevarTiro(damage, hit.collider.CompareTag("Head"), hit.point, hit.normal);
+
+            // buraco de bala no cenário (nos inimigos não faz nada; no sniper também não)
+            if (sniper == null) MarcasImpacto.Bala(hit);
             /****************/
         }
 
