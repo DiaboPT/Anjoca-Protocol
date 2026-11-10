@@ -12,6 +12,10 @@ public class PlayerMovement : MonoBehaviour
     public float jumpHeight = 1.5f;   // salto normal (o reforçado está no SuitAbilities)
     public float gravity = -20f;
 
+    [Header("Descer rampas e escadas")]
+    [Tooltip("Até quantos metros abaixo dos pés procura chão para colar o jogador ao descer rampas e escadas. 0 desliga.")]
+    public float distanciaColar = 0.5f;
+
     [Header("Câmara")]
     public Transform cameraTransform; // arrastar a Main Camera
     public float mouseSensitivity = 0.1f;
@@ -130,17 +134,28 @@ public class PlayerMovement : MonoBehaviour
         if (abilities != null && abilities.speedActive) speed *= abilities.speedMultiplier;
 
         // --- Saltar e gravidade ---
-        if (controller.isGrounded)
+        bool estavaNoChao = controller.isGrounded;
+        bool saltou = false;
+        if (estavaNoChao)
         {
             if (verticalVelocity < 0f) verticalVelocity = -2f;   // mantém colado ao chão
             if (kb.spaceKey.wasPressedThisFrame && alturaAtual >= alturaDePe - 0.01f)   // abaixado (ou a levantar) não salta
+            {
                 verticalVelocity = Mathf.Sqrt(GetJumpHeight() * -2f * gravity);
+                saltou = true;
+            }
         }
         verticalVelocity += gravity * Time.deltaTime;
 
         Vector3 velocity = move * speed;
         velocity.y = verticalVelocity;
         controller.Move(velocity * Time.deltaTime);
+
+        // A descer uma rampa, o empurrão de -2 não chega (na escada da cave, a andar, são precisos 3,3 m/s;
+        // a correr, 5,3) e o jogador sai do chão e cai aos saltinhos. Se estava no chão, não saltou e ficou
+        // no ar, procura chão logo abaixo e cola-o lá.
+        if (estavaNoChao && !saltou && !controller.isGrounded)
+            ColarAoChao();
 
         // --- Esc solta o rato (útil no editor) ---
         if (kb.escapeKey.wasPressedThisFrame)
@@ -185,6 +200,27 @@ public class PlayerMovement : MonoBehaviour
             return false;
         }
         return true;
+    }
+
+    // Lança uma esfera para baixo a partir da base da cápsula. Se houver chão a menos de distanciaColar,
+    // desce o jogador até lá. Se não houver (um degrau alto, uma varanda), deixa-o cair como de costume.
+    void ColarAoChao()
+    {
+        if (distanciaColar <= 0f) return;
+
+        float raio = controller.radius * 0.9f;   // um pouco mais pequena, para não começar já a tocar numa parede
+        Vector3 centro = transform.TransformPoint(controller.center);
+        Vector3 origem = centro + Vector3.down * (controller.height / 2f - controller.radius);
+        float distancia = distanciaColar + controller.skinWidth + (controller.radius - raio);
+
+        if (!Physics.SphereCast(origem, raio, Vector3.down, out RaycastHit hit, distancia, ~0, QueryTriggerInteraction.Ignore))
+            return;
+
+        // só cola a chão onde se consegue andar, nunca a uma parede inclinada demais
+        if (Vector3.Angle(hit.normal, Vector3.up) > controller.slopeLimit) return;
+
+        controller.Move(Vector3.down * hit.distance);   // o Move para ao tocar no chão, por isso não o atravessa
+        verticalVelocity = -2f;
     }
 
     // Altura do salto: reforçada se o Salto do Fato estiver ligado
