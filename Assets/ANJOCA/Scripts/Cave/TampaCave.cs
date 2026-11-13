@@ -11,6 +11,9 @@ using TMPro;
 // passava por dentro dele e ele caía no buraco.
 // Opcional: um NavMeshObstacle (com Carve) por cima do 2.º lanço, que impede os soldados de descerem
 // enquanto a tampa está fechada. Ao abrir, desliga-se e os soldados passam a poder usar a escada.
+// Com Precisa Cartao ligado (passo 3 da base), a tampa só funciona depois de o jogador apanhar o cartão de acesso.
+// Antes disso não aparece nada no ecrã e o E não faz nada. Ao apanhar o cartão, aparece durante 5 s
+// "Se quiseres voltar a ter os poderes, dirige-te à cave". A partir daí, junto à tampa, aparece o [E] de sempre.
 public class TampaCave : MonoBehaviour
 {
     [Header("Abrir")]
@@ -19,6 +22,14 @@ public class TampaCave : MonoBehaviour
     public float anguloAberta = -90f;
     [Tooltip("Segundos que a tampa demora a abrir.")]
     public float duracao = 1.5f;
+
+    [Header("Cartão de acesso")]
+    [Tooltip("Ligado: a tampa só funciona depois de o jogador apanhar o cartão de acesso (o temCartao do InventarioPlayer). Antes disso não mostra nada.")]
+    public bool precisaCartao = true;
+    [Tooltip("Mensagem que aparece no ecrã quando o jogador apanha o cartão. Vazia = não mostra nada.")]
+    public string mensagemCartao = "Se quiseres voltar a ter os poderes, dirige-te à cave";
+    [Tooltip("Segundos que a mensagem fica no ecrã.")]
+    public float duracaoMensagem = 5f;
 
     [Header("Peças (vazias = procura sozinho)")]
     [Tooltip("O collider da chapa (o filho Tampa). Serve para saber se o jogador está em cima dela.")]
@@ -46,6 +57,9 @@ public class TampaCave : MonoBehaviour
     public bool aberta = false;
 
     PlayerStats jogador;            // o jogador, só enquanto está dentro da zona
+    InventarioPlayer inventario;    // o inventário do jogador (para ver se tem o cartão)
+    bool cartaoVisto = false;       // já se viu que o jogador apanhou o cartão (a mensagem só aparece uma vez)
+    float mensagemAte = 0f;         // até quando a mensagem do cartão fica no ecrã (0 = não está)
     Quaternion rotacaoFechada;
     bool aAbrir = false;
     float tempo = 0f;
@@ -73,10 +87,16 @@ public class TampaCave : MonoBehaviour
             if (obj != null) textoAviso = obj.GetComponent<TextMeshProUGUI>();
             if (textoAviso == null) Debug.LogWarning(name + ": não encontrei o texto \"" + nomeTextoAviso + "\" no Canvas");
         }
+
+        inventario = FindFirstObjectByType<InventarioPlayer>();
+        if (precisaCartao && inventario == null)
+            Debug.LogWarning(name + ": não encontrei o InventarioPlayer. A tampa não vai abrir com o cartão");
     }
 
     void Update()
     {
+        VerificarCartao();
+
         if (aAbrir)
         {
             // roda aos poucos, a começar e a acabar devagar
@@ -97,6 +117,13 @@ public class TampaCave : MonoBehaviour
             return;
         }
 
+        // sem o cartão, a tampa não mostra nada e não abre
+        if (!Desbloqueada())
+        {
+            Apagar();
+            return;
+        }
+
         if (EmCimaDaTampa(jogador.transform.position))
         {
             MostrarTexto("Sai de cima da tampa para a abrir");
@@ -107,6 +134,38 @@ public class TampaCave : MonoBehaviour
 
         if (Keyboard.current != null && Keyboard.current[tecla].wasPressedThisFrame)
             Abrir();
+    }
+
+    // a tampa já funciona: não precisa do cartão, ou o jogador já o apanhou
+    bool Desbloqueada()
+    {
+        return !precisaCartao || (inventario != null && inventario.temCartao);
+    }
+
+    // no frame em que o jogador apanha o cartão, mostra a mensagem durante duracaoMensagem segundos
+    void VerificarCartao()
+    {
+        if (!precisaCartao || string.IsNullOrEmpty(mensagemCartao)) return;
+
+        if (!cartaoVisto && inventario != null && inventario.temCartao)
+        {
+            cartaoVisto = true;
+            mensagemAte = Time.time + duracaoMensagem;
+        }
+        if (mensagemAte <= 0f) return;
+
+        if (Time.time >= mensagemAte)
+        {
+            mensagemAte = 0f;
+            if (textoAviso != null && textoAviso.text == mensagemCartao) textoAviso.text = "";
+            if (ultimoTexto == mensagemCartao) ultimoTexto = null;
+            return;
+        }
+
+        // o texto é partilhado: se outro objeto (quadro, emissor...) estiver a mostrar um aviso, deixa-o.
+        // Volta a aparecer se o outro apagar antes de acabar o tempo
+        if (textoAviso != null && (textoAviso.text == "" || textoAviso.text == mensagemCartao))
+            MostrarTexto(mensagemCartao);
     }
 
     // pública para mais tarde um terminal, um cartão ou o Modo Debug a poderem abrir
@@ -143,6 +202,7 @@ public class TampaCave : MonoBehaviour
         PlayerStats p = other.GetComponentInParent<PlayerStats>();
         if (p == null) return;
         jogador = p;
+        if (inventario == null) inventario = other.GetComponentInParent<InventarioPlayer>();
     }
 
     void OnTriggerExit(Collider other)

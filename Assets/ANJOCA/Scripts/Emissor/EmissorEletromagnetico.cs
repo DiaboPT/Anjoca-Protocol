@@ -2,19 +2,25 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using TMPro;
 
-// Dispositivo eletromagnético (emissor). Enquanto está ativo, dentro da área da estática do minimapa
-// (as ZonaEstatica do edifício) o fato fica com a energia a 0 e o minimapa fica em estática.
+// Dispositivo eletromagnético (emissor). Faz duas coisas, cada uma a partir do seu momento:
+// - Estática: desde o início do nível, o minimapa fica em estática sempre que o jogador está dentro da base
+//   (as ZonaEstatica do edifício).
+// - Poderes: a partir de Ativar() (com Ativar Com Cartao, quando o jogador apanha o cartão de acesso),
+//   o fato fica com a energia a 0 e os aprimoramentos desligam-se.
 // Sabotar: manter E carregado durante uns segundos junto ao emissor. Largar a meio recomeça do zero.
-// Ao sair da área, ou depois de sabotado, a energia recomeça do 0 e regenera como de costume.
-// Depois de sabotado, o fato e o minimapa voltam a funcionar até ao fim do nível.
+// Depois de sabotado, a estática sai e a energia recomeça do 0 e regenera como de costume, até ao fim do nível.
 // Tem gerador próprio: não depende da rede elétrica. Sabotar um QuadroEletrico não o desliga.
 // Fica no objeto-pai (Emissor_EM), que tem um Box Collider com Is Trigger: a zona onde o jogador
 // tem de estar para sabotar. O cubo (mais tarde o modelo 3D) é filho.
 public class EmissorEletromagnetico : MonoBehaviour
 {
     [Header("Estado inicial")]
-    [Tooltip("Ligado: o emissor funciona desde o início do nível. Desligado: só começa quando alguém chamar Ativar() (por exemplo, ao apanhar o cartão).")]
+    [Tooltip("Ligado: corta os poderes desde o início do nível. Desligado: só a partir de Ativar() (por exemplo, ao apanhar o cartão). A estática do minimapa funciona desde o início nos dois casos.")]
     public bool ativoAoIniciar = true;
+    [Tooltip("Ligado: o emissor começa a cortar os poderes quando o jogador apanha o cartão de acesso. Usa-se com Ativo Ao Iniciar desligado.")]
+    public bool ativarComCartao = true;
+    [Tooltip("Desligado: depois de ativado, o fato fica sem energia em todo o lado até o emissor ser sabotado. Ligado: só dentro da base (a área da estática); fora dela a energia regenera.")]
+    public bool poderesSoDentroDaBase = false;
 
     [Header("Sabotagem")]
     public Key tecla = Key.E;                 // tecla a manter carregada
@@ -33,7 +39,7 @@ public class EmissorEletromagnetico : MonoBehaviour
     [Header("Sons (opcionais)")]
     // Audio Source no emissor, com Play On Awake desligado e Spatial Blend a 1 (o script escolhe o som)
     public AudioSource audioSource;
-    public AudioClip somZumbido;              // em loop enquanto o emissor está ativo
+    public AudioClip somZumbido;              // em loop até o emissor ser sabotado
     public AudioClip somSabotar;              // em loop enquanto manténs a tecla
     public AudioClip somDesligar;             // uma vez, ao acabar de sabotar
 
@@ -53,6 +59,7 @@ public class EmissorEletromagnetico : MonoBehaviour
 
     PlayerStats alvo;                         // o jogador (para lhe cortar a energia)
     PlayerStats jogadorPerto;                 // o jogador, só enquanto está na zona de sabotar
+    InventarioPlayer inventario;              // o do jogador, para saber quando apanha o cartão
     float tempoCarregado;
 
     void Awake()
@@ -64,9 +71,12 @@ public class EmissorEletromagnetico : MonoBehaviour
     {
         ativo = ativoAoIniciar;
         alvo = FindFirstObjectByType<PlayerStats>();
+        inventario = FindFirstObjectByType<InventarioPlayer>();
+        if (ativarComCartao && !ativoAoIniciar && inventario == null)
+            Debug.LogWarning(name + ": não encontrei o InventarioPlayer. O emissor não vai ligar ao apanhar o cartão");
 
         if (EstaticaMinimapa.Instancia == null)
-            Debug.LogWarning(name + ": não há EstaticaMinimapa na cena. O emissor usa a área da estática, por isso o campo não vai funcionar");
+            Debug.LogWarning(name + ": não há EstaticaMinimapa na cena. Não vai haver estática" + (poderesSoDentroDaBase ? " e os poderes não vão ser cortados" : ""));
 
         // o texto e o aviso começam escondidos
         MostrarTexto("");
@@ -75,6 +85,9 @@ public class EmissorEletromagnetico : MonoBehaviour
 
     void Update()
     {
+        // apanhou o cartão: o campo liga-se
+        if (ativarComCartao && !ativo && !sabotado && inventario != null && inventario.temCartao) Ativar();
+
         AtualizarCampo();
         AtualizarSabotagem();
         AtualizarSom();
@@ -90,17 +103,18 @@ public class EmissorEletromagnetico : MonoBehaviour
 
     void AtualizarCampo()
     {
-        bool funciona = ativo && !sabotado;
         EstaticaMinimapa estatica = EstaticaMinimapa.Instancia;
 
-        // a estática do minimapa obedece ao emissor
-        if (estatica != null) estatica.bloqueado = funciona;
+        // a estática do minimapa funciona desde o início até o emissor ser sabotado
+        // (só aparece com o jogador dentro da base: isso é a EstaticaMinimapa que vê)
+        if (estatica != null) estatica.bloqueado = !sabotado;
 
-        bool dentro = funciona && estatica != null && estatica.DentroDaZona
-                      && alvo != null && !alvo.isDead;
+        // os poderes só são cortados depois de o emissor ser ativado (cartão)
+        bool cortaPoderes = ativo && !sabotado && alvo != null && !alvo.isDead;
+        if (poderesSoDentroDaBase) cortaPoderes = cortaPoderes && estatica != null && estatica.DentroDaZona;
 
-        if (dentro && !jogadorNoCampo) EntrarNoCampo();
-        else if (!dentro && jogadorNoCampo) SairDoCampo();
+        if (cortaPoderes && !jogadorNoCampo) EntrarNoCampo();
+        else if (!cortaPoderes && jogadorNoCampo) SairDoCampo();
 
         if (jogadorNoCampo) ManterSemEnergia();
 
@@ -141,7 +155,7 @@ public class EmissorEletromagnetico : MonoBehaviour
         if (alvo != null) alvo.energy = 0f;
     }
 
-    // Liga o emissor (por exemplo quando o jogador apanha o cartão). Não faz nada se já foi sabotado.
+    // Começa a cortar os poderes (por exemplo quando o jogador apanha o cartão). Não faz nada se já foi sabotado.
     public void Ativar()
     {
         if (sabotado) return;
@@ -262,7 +276,7 @@ public class EmissorEletromagnetico : MonoBehaviour
         if (!sabotado)
         {
             if (tempoCarregado > 0f && somSabotar != null) certo = somSabotar;
-            else if (ativo) certo = somZumbido;
+            else certo = somZumbido;   // a estática funciona desde o início, por isso zumbe até ser sabotado
         }
 
         if (audioSource.clip == certo && (certo == null || audioSource.isPlaying)) return;
