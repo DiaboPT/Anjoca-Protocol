@@ -6889,6 +6889,7 @@ GameObject:
   - component: {fileID: 1575508204525477323}
   - component: {fileID: 1863004394119617178}
   - component: {fileID: 7482772835472538502}
+  - component: {fileID: 5114116608681057765}
   m_Layer: 7
   m_Name: Soldado_Modelo
   m_TagString: Untagged
@@ -7088,6 +7089,12 @@ MonoBehaviour:
   shootingRadius: 3
   playerInVisionRadius: 0
   playerInShootingRadius: 0
+  lanterna: {fileID: 0}
+  raioVisaoEscuro: 6
+  noEscuro: 0
+  alturaOutroPiso: 2.5
+  memoriaOutroPiso: 4
+  semVistaOutroPiso: 0
   duracaoQueda: 0.6
   linhaTiro: {fileID: 3916704820715879466}
   duracaoLinha: 0.1
@@ -7241,6 +7248,24 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AlvoTermico
   malhas: []
+--- !u!114 &5114116608681057765
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6126416156900498517}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8b1d4fcef6b552447a2c83ce7c69d999, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::LargarMunicao
+  prefabMunicao: {fileID: 6365684039315029652, guid: 29c096c0e82b047448a198f348d0ba58, type: 3}
+  hipoteseLargar: 1
+  alturaSobreChao: 0.15
+  procurarChaoAte: 6
+  espalhar: 0.3
+  jaLargou: 0
 --- !u!1 &6141645529120555821
 GameObject:
   m_ObjectHideFlags: 0

@@ -45,6 +45,9 @@ public class Weapon : MonoBehaviour {
     [SerializeField] private int balasCarregador = 30;
     // balas de reserva com que começas, fora as da arma (90 = 3 carregadores)
     [SerializeField] private int balasReserva = 90;
+    // máximo de balas que podes ter na reserva (0 = sem limite).
+    // com limite, as caixas de munição dos inimigos ficam no chão quando já estás cheio
+    [SerializeField] private int reservaMaxima = 0;
     // segundos a recarregar (sem disparar). Acertar pela duração da animação
     [SerializeField] private float tempoRecarregar = 2f;
     // tecla para recarregar
@@ -233,6 +236,23 @@ public class Weapon : MonoBehaviour {
         reservaRestante -= tirar;
         aRecarregar = false;
     }
+
+    // chamado pelas caixas de munição que os inimigos deixam cair (um Pickup com o Type em Ammo Pack).
+    // devolve false se não houver nada a dar (reserva no máximo): a caixa fica no chão para mais tarde
+    public bool AdicionarBalas(int quantidade) {
+        if (quantidade <= 0) return false;
+        if (reservaMaxima > 0 && reservaRestante >= reservaMaxima) return false;
+
+        reservaRestante += quantidade;
+        if (reservaMaxima > 0 && reservaRestante > reservaMaxima) reservaRestante = reservaMaxima;
+
+        // estavas com o carregador vazio: recarrega logo, para poderes voltar a disparar
+        if (balasRestantes <= 0) Recarregar();
+        return true;
+    }
+
+    // balas que tens na reserva (para o HUD ou para outros scripts)
+    public int ReservaRestante { get { return reservaRestante; } }
 
     // texto das balas para o HUD (o DebugHUD mostra-o no canto de baixo à direita)
     public string TextoBalas {
