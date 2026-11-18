@@ -105,6 +105,27 @@ public class Enemy : MonoBehaviour
    public float shootingRadius;
    public bool playerInVisionRadius;
    public bool playerInShootingRadius;
+
+   [Header("Escuro (quadro elétrico sabotado)")]
+   // Spot Light filha do soldado (na cabeça ou na arma), desligada no Inspector. Acende-se no escuro
+   public Light lanterna;
+   // metros que vê, e até onde dispara, numa ZonaSemEnergia. Não aumenta ao ver-te
+   public float raioVisaoEscuro = 6f;
+   // está numa zona sem energia (aparece no Inspector para ver durante o Play)
+   public bool noEscuro = false;
+
+   [Header("Pisos")]
+   // diferença de altura entre os pés do soldado e os do jogador a partir da qual o jogador conta como noutro piso.
+   // Noutro piso, a laje está pelo meio: só te deteta se te vir (por exemplo pelo buraco da escada)
+   public float alturaOutroPiso = 2.5f;
+   // segundos que continua atrás de ti depois de mudares de piso sem ele te ver (vai pela escada à tua procura)
+   public float memoriaOutroPiso = 4f;
+   // o jogador está noutro piso e o soldado não o vê: não dispara (aparece no Inspector para ver durante o Play)
+   public bool semVistaOutroPiso = false;
+   // até quando continua atrás de ti sem te ver, depois de mudares de piso
+   private float perseguirAte = 0f;
+   // o CharacterController do jogador, para saber onde estão os pés dele
+   private CharacterController ccJogador;
    
    // Usado para não ser necessário walkPoints nos inimigos fixos
    private Vector3 posicaoInicial;
@@ -157,6 +178,7 @@ public class Enemy : MonoBehaviour
       carregadoresRestantes = carregadores - 1;
       // healthBar.GiveFullHealthBar(enemyHealth);
       playerBody = GameObject.Find("Player").transform;
+      ccJogador = playerBody.GetComponent<CharacterController>();
       enemyAgent =  GetComponent<NavMeshAgent>();
 
       // num prefab não dá para guardar objetos da cena: se o Look Point vier vazio, vai buscar o "Look" do Player
@@ -167,6 +189,9 @@ public class Enemy : MonoBehaviour
       
       visionRadiusInicial = visionRadius;
       shootingRadiusInicial = shootingRadius;
+
+      // a lanterna só se acende no escuro
+      if (lanterna != null) lanterna.enabled = false;
       
       // a linha começa escondida
       if (linhaTiro != null) linhaTiro.enabled = false;
@@ -189,9 +214,16 @@ public class Enemy : MonoBehaviour
    {
       // morto não faz mais nada até objecto ser destruido 
       if (presentHealth <= 0) return;
+
+      // numa zona sem energia: lanterna acesa e visão curta. Vem antes do CheckSphere,
+      // por isso ganha a tudo o que mexeu no raio no frame anterior (perseguir, ZonaAlerta, reforços, levar um tiro)
+      AtualizarEscuro();
       
       playerInVisionRadius = Physics.CheckSphere(transform.position, visionRadius, playerLayer);
       playerInShootingRadius = Physics.CheckSphere(transform.position, shootingRadius, playerLayer);
+
+      // o CheckSphere atravessa as lajes: noutro piso só conta se te vir
+      VerificarOutroPiso();
 
       // acabou de te ver (no frame anterior não via): voz de alerta
       if (playerInVisionRadius && !viaJogador && Time.time >= proximoAlerta)
@@ -364,6 +396,30 @@ public class Enemy : MonoBehaviour
       shootingRadius = shootingRadiusInicial;
    }
    
+   // quadro elétrico sabotado: decide pela posição do SOLDADO (não pela do jogador)
+   private void AtualizarEscuro()
+   {
+      bool estavaNoEscuro = noEscuro;
+      // mede à altura do peito, para não falhar quando os pés estão mesmo no fundo da caixa
+      noEscuro = ZonaSemEnergia.NoEscuro(transform.position + Vector3.up);
+
+      if (lanterna != null && lanterna.enabled != noEscuro) lanterna.enabled = noEscuro;
+
+      if (noEscuro)
+      {
+         // raio fixo: sem os 30 m da perseguição nem os bónus (ZonaAlerta, reforços, tiro)
+         visionRadius = raioVisaoEscuro;
+         // não dispara mais longe do que vê
+         shootingRadius = Mathf.Min(shootingRadiusInicial, raioVisaoEscuro);
+      }
+      // acabou de sair para uma zona com luz: volta aos raios normais.
+      // se te estiver a ver, a perseguição volta a aumentá-los como sempre
+      else if (estavaNoEscuro)
+      {
+         ReporRaios();
+      }
+   }
+
    // chamada pela ZonaAlerta quando entras ou sais da zona
    public void BonusZona(float valor)
    {
@@ -374,6 +430,64 @@ public class Enemy : MonoBehaviour
    public void BonusReforco(float valor)
    {
       bonusReforco = valor;
+   }
+
+   // Se estiveres noutro piso, o soldado só conta que te vê se houver linha de vista até ti,
+   // ou se te estava a perseguir há menos de memoriaOutroPiso segundos (subiste a escada e ele vai atrás).
+   // No mesmo piso fica tudo como antes.
+   private void VerificarOutroPiso()
+   {
+      semVistaOutroPiso = false;
+      if (!playerInVisionRadius) return;
+
+      if (MesmoPiso() || VeJogador())
+      {
+         perseguirAte = Time.time + memoriaOutroPiso;
+         return;
+      }
+
+      semVistaOutroPiso = true;
+      playerInShootingRadius = false;
+      // viaJogador ainda é o valor do frame anterior: só continua se já te estava a ver
+      if (!viaJogador || Time.time > perseguirAte) playerInVisionRadius = false;
+   }
+
+   // os pés do soldado e os do jogador estão a menos de alturaOutroPiso metros de altura?
+   private bool MesmoPiso()
+   {
+      return Mathf.Abs(PesJogador() - PesSoldado()) < alturaOutroPiso;
+   }
+
+   private float PesSoldado()
+   {
+      // o NavMeshAgent põe o objeto baseOffset metros acima do NavMesh
+      return transform.position.y - (enemyAgent != null ? enemyAgent.baseOffset : 0f);
+   }
+
+   private float PesJogador()
+   {
+      return ccJogador != null ? ccJogador.bounds.min.y : playerBody.position.y;
+   }
+
+   // linha de vista dos olhos do soldado até ao jogador, como nas câmaras de vigilância
+   private bool VeJogador()
+   {
+      Vector3 olhos = new Vector3(transform.position.x, PesSoldado() + 1.6f, transform.position.z);
+      Vector3 alvo = LookPoint != null ? LookPoint.position : playerBody.position + Vector3.up;
+      Vector3 direcao = alvo - olhos;
+
+      RaycastHit[] hits = Physics.RaycastAll(olhos, direcao.normalized, direcao.magnitude + 0.5f,
+         Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+      System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
+
+      foreach (RaycastHit hit in hits)
+      {
+         // o corpo do próprio soldado não conta
+         if (hit.transform.IsChildOf(transform)) continue;
+         // a primeira coisa em que bate é o jogador: vê-o. Outra coisa qualquer (a laje, uma parede): está tapado
+         return hit.transform.IsChildOf(playerBody);
+      }
+      return false;
    }
    
    
@@ -411,6 +525,8 @@ public class Enemy : MonoBehaviour
    private void Disparar()
    {
       if (previouslyShoot) return;
+      // estás noutro piso e ele não te vê: vai atrás de ti pela escada, mas não dispara contra a laje
+      if (semVistaOutroPiso) return;
       // a recarregar não dispara
       if (aRecarregar) return;
       // gastou os carregadores todos: já não dispara
@@ -683,6 +799,11 @@ public class Enemy : MonoBehaviour
       // raio de disparo a vermelho
       Gizmos.color = Color.red;
       Gizmos.DrawWireSphere(transform.position, shootingRadius);
+
+      // visão no escuro (quadro elétrico sabotado) a azul. Desenhada no fim:
+      // no escuro fica por cima da amarela, porque as duas têm o mesmo tamanho
+      Gizmos.color = Color.blue;
+      Gizmos.DrawWireSphere(transform.position, raioVisaoEscuro);
    }
 }
 

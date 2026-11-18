@@ -71,9 +71,12 @@ public class IconeMinimapa : MonoBehaviour
         rend.enabled = Visivel();
         if (!rend.enabled) return;
 
-        Vector3 posicao = alvo.position + Vector3.up * alturaAcima;
-
         MinimapaCamera mini = MinimapaCamera.Instancia;
+
+        Vector3 posicao = alvo.position + Vector3.up * alturaAcima;
+        // dentro do edifício, a câmara do minimapa corta tudo acima do piso do jogador:
+        // o ícone fica logo abaixo do corte, para continuar a aparecer
+        if (mini != null) posicao.y = Mathf.Min(posicao.y, mini.AlturaMaxIcones);
         if (prenderNaBorda && mini != null)
         {
             // distância ao centro do minimapa, só em X e Z
@@ -108,6 +111,12 @@ public class IconeMinimapa : MonoBehaviour
         else if (drone != null) { morto = drone.visionRadius <= 0f; viu = drone.playerInVisionRadius; }
 
         if (morto) return false;
+
+        // dentro do edifício, o minimapa mostra só o teu piso: os inimigos dos outros pisos não aparecem
+        MinimapaCamera mini = MinimapaCamera.Instancia;
+        if (mini != null && mini.CortarAgora && jogador != null
+            && Mathf.Abs(alvo.position.y - jogador.position.y) > 2.5f)
+            return false;
 
         bool perto = false;
         if (jogador != null)

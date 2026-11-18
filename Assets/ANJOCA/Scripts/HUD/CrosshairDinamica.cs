@@ -179,6 +179,10 @@ public class CrosshairDinamica : MonoBehaviour
             Enemy soldado = hit.collider.GetComponentInParent<Enemy>();
             if (soldado != null && soldado.presentHealth > 0f) inimigo = true;
             if (hit.collider.GetComponentInParent<EnemyDrone>() != null) inimigo = true;
+            
+            // sniper da torre da trincheira (o collider está no corpo e o script no Pivo, como no Weapon)
+            Sniper sniper = Sniper.Atingido(hit.collider);
+            if (sniper != null && !sniper.morto) inimigo = true;
         }
 
         Color cor = inimigo ? corInimigo : corNormal;

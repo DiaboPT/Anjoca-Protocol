@@ -247,10 +247,22 @@ adicionados os power-ups que faltavam
     visao termica tem dois filtrotermico e alvotermico
     cada inimigo ou alvo temo scvript associado
     
-remoção dos inimigos amtigos (capsulas desativadas)
+remoção dos inimigos antigos (capsulas desativadas)
 
 
 integração do terreno
 integração da chuva
 apaguei vegetacao/pinheiro porque nao estava ser usado
 
+
+V 0.4.3
+-------------------------
+implementado guaritas com camaras e soldados 
+->foi alterado o raio da mavmesh agent humanoid -> de 0.5 para 0.35
+minimapa estatico
+caionho com minas
+quadro eletrico sabotavel
+correção minimapa escuro
+correção soldado inimigo no escuro (emissive map)
+
+adicionado dispositivo Eletromagnetico
