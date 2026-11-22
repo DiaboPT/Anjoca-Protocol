@@ -9,7 +9,8 @@ public class DebugHUD : MonoBehaviour
     PlayerStats stats;
     SuitAbilities abilities;
     PlayerMovement movement;
-    Weapon arma;                             // para o contador de balas
+    Weapon arma;                             // para o contador de balas (quando só há uma arma)
+    TrocaArma trocaArma;                     // com duas armas, diz qual tens na mão
     GUIStyle estiloBalas;                    // letra maior, alinhada à direita
     
     public TextMeshProUGUI textoResultado;   // o TextoResultado do Canvas
@@ -22,6 +23,8 @@ public class DebugHUD : MonoBehaviour
         movement = GetComponent<PlayerMovement>();
         // o Weapon está dentro da Main Camera, que é filha do jogador
         arma = GetComponentInChildren<Weapon>(true);
+        // se houver mais do que uma arma, é o Troca Arma (neste mesmo objeto) que diz qual está na mão
+        trocaArma = GetComponent<TrocaArma>();
     }
 
     void Update()
@@ -65,12 +68,21 @@ public class DebugHUD : MonoBehaviour
         if (ModoTeste.Ativo)
             GUI.Label(new Rect(20, 172, 400, 20), "Teste: K dano · L laser drone · H curar");
 
-        // balas no canto de baixo à direita (BALAS: 30 / 90, A RECARREGAR... ou SEM BALAS)
-        if (arma != null)
+        // balas no canto de baixo à direita (M4 · BALAS: 30 / 90, A RECARREGAR... ou SEM BALAS)
+        Weapon armaNaMao = arma;
+        string nomeArma = "";
+        if (trocaArma != null && trocaArma.ArmaAtiva != null)
+        {
+            armaNaMao = trocaArma.ArmaAtiva;
+            nomeArma = trocaArma.NomeArmaAtiva;
+            if (nomeArma != "") nomeArma += " · ";
+        }
+
+        if (armaNaMao != null)
         {
             if (estiloBalas == null)
                 estiloBalas = new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, alignment = TextAnchor.LowerRight };
-            GUI.Label(new Rect(Screen.width - 320, Screen.height - 50, 300, 30), arma.TextoBalas, estiloBalas);
+            GUI.Label(new Rect(Screen.width - 440, Screen.height - 50, 420, 30), nomeArma + armaNaMao.TextoBalas, estiloBalas);
         }
 
         // if (stats.isDead)

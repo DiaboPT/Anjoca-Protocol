@@ -106,9 +106,10 @@ public class ModoDebug : MonoBehaviour
 
         // Ordenar em todos os frames: o mais próximo do jogador fica em cima
         // (feito no Update e não no OnGUI, para a ordem não mudar a meio de um frame)
+        // Soldados: primeiro os que andam atrás de ti (não calmos), depois os calmos, os mortos no fim
         if (jogador != null)
         {
-            System.Array.Sort(inimigos, (a, b) => DistanciaOrdem(a).CompareTo(DistanciaOrdem(b)));
+            System.Array.Sort(inimigos, (a, b) => OrdemSoldado(a).CompareTo(OrdemSoldado(b)));
             System.Array.Sort(drones, (a, b) => DistanciaOrdem(a).CompareTo(DistanciaOrdem(b)));
         }
     }
@@ -191,14 +192,14 @@ public class ModoDebug : MonoBehaviour
             float distancia = Distancia(e.transform.position);
             if (distanciaMaxima > 0f && distancia > distanciaMaxima) continue;
 
-            string estado = EstadoInimigo(e.presentHealth, e.playerInVisionRadius, e.playerInShootingRadius);
+            // estado do soldado (calmo, desconfiado, combate, perseguir, procurar, alerta) e o medidor da PercecaoInimigo
+            string estado = e.TextoEstado();
             GUILayout.BeginHorizontal();
             Coluna("<b>" + e.name + "</b>", larguraNome);
-            Coluna(estado, 75);
+            Coluna(estado, 115);
             Coluna(SEP + "vida " + e.presentHealth.ToString("0") + "/" + e.enemyHealth.ToString("0"), 85);
             Coluna(SEP + "dist " + TextoDistancia(distancia), 85);
-            Coluna(SEP + "visão " + e.visionRadius.ToString("0"), 65);
-            Coluna(SEP + "tiro " + e.shootingRadius.ToString("0"), 50);
+            Coluna(SEP + "tiro " + e.alcanceDisparo.ToString("0"), 50);
             GUILayout.EndHorizontal();
         }
     }
@@ -249,6 +250,17 @@ public class ModoDebug : MonoBehaviour
     {
         if (c == null) return float.MaxValue;
         return Vector3.Distance(jogador.transform.position, c.transform.position);
+    }
+
+    // Ordem dos soldados na tabela: ocupados (por distância), calmos (por distância), mortos
+    float OrdemSoldado(Enemy e)
+    {
+        if (e == null) return float.MaxValue;
+        float grupo;
+        if (e.presentHealth <= 0f) grupo = 2f;
+        else if (e.estado == global::EstadoInimigo.Calmo) grupo = 1f;
+        else grupo = 0f;
+        return grupo * 100000f + DistanciaOrdem(e);
     }
 
     string EstadoInimigo(float vida, bool vejo, bool aoAlcance)

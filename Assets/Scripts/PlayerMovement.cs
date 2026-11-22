@@ -1,7 +1,8 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// Movimento FPS: WASD andar, Shift correr, Espaço saltar, Ctrl esquerdo abaixar, rato olhar, Esc solta o rato.
+// Movimento FPS: WASD andar, Shift correr, Alt esquerdo (segurar) andar devagar, Espaço saltar, Ctrl esquerdo abaixar,
+// rato olhar, Esc solta o rato.
 // Pôr na Capsule. A Main Camera fica como filha da Capsule.
 [RequireComponent(typeof(CharacterController))]
 public class PlayerMovement : MonoBehaviour
@@ -35,6 +36,14 @@ public class PlayerMovement : MonoBehaviour
     // true enquanto está abaixado (ou a meio de baixar). Lido pela sombra e, mais tarde, pela deteção dos snipers
     public bool Abaixado { get; private set; }
 
+    [Header("Andar devagar")]
+    public Key teclaDevagar = Key.LeftAlt;  // segurar para andar devagar (passos silenciosos, os soldados dão menos por ti)
+    public float slowSpeed = 2f;            // velocidade devagar (de pé andas a 5). Ganha ao Shift e ignora a Velocidade do Fato
+    // abaixado e devagar ao mesmo tempo anda à mais lenta das duas (crouchSpeed ou slowSpeed)
+
+    // true enquanto a tecla de andar devagar está premida. Lido pelo RuidoPassosJogador e pela PercecaoInimigo
+    public bool Devagar { get; private set; }
+
     Camera cam;
     float normalFOV;
 
@@ -42,6 +51,16 @@ public class PlayerMovement : MonoBehaviour
     SuitAbilities abilities;
     float verticalVelocity;
     float pitch;
+
+    /**** CARLOS ****/
+    // --- Coice das armas ---
+    // o Weapon chama o AplicarCoice() a cada tiro: a câmara sobe um bocado e desvia-se para um lado,
+    // e volta sozinha ao sítio. Fica à parte do pitch do rato, para não estragar a pontaria do jogador
+    float coiceCima = 0f;     // graus que o coice tem a câmara levantada
+    float coiceLado = 0f;     // graus que a tem desviada para a direita
+    float coiceVolta = 8f;    // graus por segundo a voltar ao sítio (quem manda nisto é a arma)
+    float coiceEspera = 0f;   // só começa a voltar a partir deste momento
+    /****************/
 
     // valores de pé, guardados no arranque
     float alturaDePe;
@@ -73,6 +92,22 @@ public class PlayerMovement : MonoBehaviour
         alturaAtual = alturaDePe;
     }
 
+    /**** CARLOS ****/
+    // chamado pelo Weapon em cada tiro.
+    //  cima  = graus que a câmara sobe neste tiro
+    //  lado  = graus para a direita (negativo = para a esquerda)
+    //  maximo = limite do desvio acumulado, para a câmara não fugir para o céu
+    //  volta = graus por segundo a recuperar, depois de parares de disparar
+    //  espera = segundos parado antes de começar a recuperar
+    public void AplicarCoice(float cima, float lado, float maximo, float volta, float espera)
+    {
+        coiceCima = Mathf.Clamp(coiceCima + cima, -maximo, maximo);
+        coiceLado = Mathf.Clamp(coiceLado + lado, -maximo, maximo);
+        coiceVolta = volta;
+        coiceEspera = Time.time + espera;
+    }
+    /****************/
+
     void Update()
     {
         Keyboard kb = Keyboard.current;
@@ -91,8 +126,20 @@ public class PlayerMovement : MonoBehaviour
         Vector2 look = mouse.delta.ReadValue() * sensibilidade;
         transform.Rotate(0f, look.x, 0f);                 // o corpo roda para os lados
         pitch = Mathf.Clamp(pitch - look.y, -85f, 85f);   // a câmara sobe/desce, com limite
+
+        /**** CARLOS ****/
+        // o coice do tiro volta ao sítio sozinho, mas só uns instantes depois do último tiro.
+        // Sem essa espera, numa rajada a câmara voltava entre um tiro e o seguinte e nunca chegava a subir
+        if (Time.time >= coiceEspera)
+        {
+            float volta = coiceVolta * Time.deltaTime;
+            coiceCima = Mathf.MoveTowards(coiceCima, 0f, volta);
+            coiceLado = Mathf.MoveTowards(coiceLado, 0f, volta);
+        }
+        /****************/
+
         if (cameraTransform != null)
-            cameraTransform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
+            cameraTransform.localRotation = Quaternion.Euler(Mathf.Clamp(pitch - coiceCima, -89f, 89f), coiceLado, 0f);
 
         // --- Zoom: botão direito, só depois de apanhar o módulo de Precisão e ativar no módulo na tecla 3 ---
         if (cam != null)
@@ -127,11 +174,14 @@ public class PlayerMovement : MonoBehaviour
         if (kb.aKey.isPressed) move -= transform.right;
         move = Vector3.ClampMagnitude(move, 1f);          // na diagonal não anda mais rápido
 
+        Devagar = kb[teclaDevagar].isPressed;
+
         float speed = walkSpeed;
         if (Abaixado) speed = crouchSpeed;                 // abaixado não corre
-        else if (kb.leftShiftKey.isPressed) speed = runSpeed;
-        // Velocidade do Fato (tecla 5): multiplica o andar e o correr
-        if (abilities != null && abilities.speedActive) speed *= abilities.speedMultiplier;
+        else if (kb.leftShiftKey.isPressed && !Devagar) speed = runSpeed;   // devagar ganha ao Shift
+        // Velocidade do Fato (tecla 5): multiplica o andar e o correr (devagar não)
+        if (abilities != null && abilities.speedActive && !Devagar) speed *= abilities.speedMultiplier;
+        if (Devagar) speed = Mathf.Min(speed, slowSpeed);
 
         // --- Saltar e gravidade ---
         bool estavaNoChao = controller.isGrounded;

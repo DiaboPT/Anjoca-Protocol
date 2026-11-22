@@ -60,6 +60,35 @@ public class Weapon : MonoBehaviour {
     private bool aRecarregar = false;
     // Animator do Player_Bracos, para a animação de recarregar
     private Animator animBracos;
+
+    [Header("Cadência")]
+    // ligado: segurar o gatilho dispara em rajada (a M4). Desligado: um tiro por cada clique (a Glock)
+    [SerializeField] private bool automatica = false;
+    // tiros por minuto quando é automática (a M4 anda pelos 750; 60/este valor são os segundos entre tiros)
+    [SerializeField] private float tirosPorMinuto = 750f;
+    // quando pode sair o próximo tiro
+    private float proximoTiro = 0f;
+
+    [Header("Dispersão e coice")]
+    // A dispersão e o coice são a mesma coisa: cada tiro empurra a câmara, e o tiro seguinte sai
+    // já da mira nova. A bala vai sempre ter onde a mira está, e o que espalha a rajada é a câmara a subir.
+    // cone fixo à volta da mira, em graus (a arma nunca é perfeita). 0 = acerta sempre no centro
+    [SerializeField] private float dispersaoBase = 0.25f;
+    // graus que a câmara sobe a cada tiro
+    [SerializeField] private float dispersaoPorTiro = 0.4f;
+    // limite do desvio acumulado, para a câmara não fugir para o céu numa rajada longa
+    [SerializeField] private float dispersaoMaxima = 4f;
+    // graus por segundo a que a câmara volta ao sítio, depois de largares o gatilho
+    [SerializeField] private float recuperacaoDispersao = 10f;
+    // quanto o coice atira para o lado, em relação ao que sobe (0 = só sobe, 1 = tanto para o lado como para cima)
+    [SerializeField] private float coiceDeLado = 0.6f;
+    // o Player, que é quem manda na câmara
+    private PlayerMovement jogador;
+
+    [Header("Barulho (os soldados ouvem os tiros)")]
+    // metros a que os soldados ouvem o tiro (metade com uma parede pelo meio, um terço noutro piso). 0 = não se ouve
+    [SerializeField] private float raioRuidoTiro = 35f;
+    private float proximoRuido = 0f;
     /****************/
 
 
@@ -68,6 +97,8 @@ public class Weapon : MonoBehaviour {
         balasRestantes = balasCarregador;
         reservaRestante = balasReserva;
         if (bracos != null) animBracos = bracos.GetComponent<Animator>();
+        // o Weapon está dentro da Main Camera, que está dentro do Player
+        jogador = GetComponentInParent<PlayerMovement>();
     }
     /****************/
 
@@ -77,6 +108,14 @@ public class Weapon : MonoBehaviour {
 
     private void OnDisable() {
         fireAction.action.Disable();
+
+        /**** CARLOS ****/
+        // guardaste a arma a meio de recarregar: o recarregar fica sem efeito (tens de voltar a carregar em R).
+        // Sem isto, a arma ficava presa em "A RECARREGAR..." para sempre, porque o Invoke não corre
+        // enquanto o objeto está desligado
+        CancelInvoke(nameof(AcabarRecarregar));
+        aRecarregar = false;
+        /****************/
     }
 
 
@@ -86,10 +125,20 @@ public class Weapon : MonoBehaviour {
             Recarregar();
         /****************/
 
-        if (fireAction.action.WasPressedThisFrame())
+        /**** CARLOS ****/
+        // automática: enquanto o gatilho está em baixo, sai um tiro de cada vez que a cadência deixa.
+        // semiautomática: um tiro por cada clique, como sempre foi
+        if (automatica) {
+            if (fireAction.action.IsPressed()) {
+                if (Time.time >= proximoTiro) Shoot();
+            }
+            else HideRay();
+        }
+        else if (fireAction.action.WasPressedThisFrame())
             Shoot();
         else if (!fireAction.action.IsPressed())
             HideRay();
+        /****************/
     }
 
     // private void LateUpdate() {
@@ -116,6 +165,12 @@ public class Weapon : MonoBehaviour {
         // gastou uma bala
         balasRestantes--;
 
+        // segura o ritmo da rajada. Soma-se ao momento marcado, e não ao de agora: assim a cadência
+        // não fica presa às imagens por segundo (a 30 fps, de outra maneira, 750 tiros/min davam 600)
+        float intervalo = tirosPorMinuto > 0f ? 60f / tirosPorMinuto : 0f;
+        proximoTiro += intervalo;
+        if (proximoTiro < Time.time) proximoTiro = Time.time + intervalo;
+
         // recuo dos braços (se estiverem ligados no Inspector)
         if (bracos != null) bracos.Recuo();
 
@@ -133,12 +188,32 @@ public class Weapon : MonoBehaviour {
             fonteSom.PlayOneShot(somTiro);
         }
 
+        // os soldados perto ouvem o tiro e vêm ver (numa rajada, um barulho a cada 0,2 s chega)
+        if (raioRuidoTiro > 0f && Time.time >= proximoRuido) {
+            proximoRuido = Time.time + 0.2f;
+            Ruido.Emitir(transform.position, raioRuidoTiro, TipoRuido.Tiro, this);
+        }
+
         // o raio parte da câmara (centro do ecrã), para acertar exatamente onde está a mira.
         // a linha verde continua a sair da arma (ShootingRaycastArea)
         Transform mira = aimOrigin;
         if (mira == null) mira = Camera.main != null ? Camera.main.transform : ShootingRaycastArea;
         Vector3 origin = mira.position;
         Vector3 direction = mira.forward;
+
+        // o cone fixo da arma: um desvio pequeno à volta da mira, igual em todos os tiros
+        if (dispersaoBase > 0f) {
+            Vector2 desvio = Random.insideUnitCircle * Mathf.Tan(dispersaoBase * Mathf.Deg2Rad);
+            direction = (direction + mira.right * desvio.x + mira.up * desvio.y).normalized;
+        }
+
+        // o coice: a bala desta vez já saiu, e agora a câmara sobe. O tiro seguinte sai da mira nova,
+        // e é assim que a rajada se espalha: vês para onde vai cada bala, em vez de ser às escondidas
+        if (jogador != null && dispersaoPorTiro > 0f) {
+            float lado = Random.Range(-dispersaoPorTiro, dispersaoPorTiro) * coiceDeLado;
+            float espera = (tirosPorMinuto > 0f ? 60f / tirosPorMinuto : 0f) + 0.08f;
+            jogador.AplicarCoice(dispersaoPorTiro, lado, dispersaoMaxima, recuperacaoDispersao, espera);
+        }
         /****************/
 
         Vector3 endPoint = origin + direction * range;
@@ -253,6 +328,9 @@ public class Weapon : MonoBehaviour {
 
     // balas que tens na reserva (para o HUD ou para outros scripts)
     public int ReservaRestante { get { return reservaRestante; } }
+
+    // está a recarregar? (o TrocaArma usa isto para não deixar trocar de arma a meio, se assim o quiseres)
+    public bool ARecarregar { get { return aRecarregar; } }
 
     // texto das balas para o HUD (o DebugHUD mostra-o no canto de baixo à direita)
     public string TextoBalas {

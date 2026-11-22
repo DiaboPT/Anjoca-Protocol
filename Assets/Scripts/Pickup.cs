@@ -16,6 +16,8 @@ public class Pickup : MonoBehaviour
     [Header("Munição (só no Ammo Pack)")]
     [Tooltip("Balas que vão para a reserva da arma")]
     public int balas = 10;
+    [Tooltip("Para que arma são estas balas. As caixas que os soldados largam são de Espingarda")]
+    public TipoMunicao municao = TipoMunicao.Espingarda;
 
     [Header("Aspeto e som (opcional)")]
     [Tooltip("Graus por segundo a rodar, para se ver que se apanha. 0 = parado")]
@@ -51,7 +53,12 @@ public class Pickup : MonoBehaviour
         if (type == PickupType.AmmoPack)
         {
             // o Weapon está dentro da Main Camera, que é filha do jogador
-            Weapon arma = stats.GetComponentInChildren<Weapon>(true);
+            Weapon arma;
+            // com duas armas, o Troca Arma (no Player) diz qual é a arma desta munição.
+            // Sem ele, como era antes, vai para a única arma que existe
+            TrocaArma trocaArma = stats.GetComponent<TrocaArma>();
+            if (trocaArma != null) arma = trocaArma.ArmaDaMunicao(municao);
+            else arma = stats.GetComponentInChildren<Weapon>(true);
             if (arma == null) return;
             // reserva cheia (só acontece se a arma tiver Reserva Maxima): a caixa fica no chão
             if (!arma.AdicionarBalas(balas)) return;
