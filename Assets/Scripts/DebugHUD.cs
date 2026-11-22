@@ -11,6 +11,7 @@ public class DebugHUD : MonoBehaviour
     PlayerMovement movement;
     Weapon arma;                             // para o contador de balas (quando só há uma arma)
     TrocaArma trocaArma;                     // com duas armas, diz qual tens na mão
+    DispositivoHack dispositivo;             // com o dispositivo das câmaras aberto, as balas não aparecem
     GUIStyle estiloBalas;                    // letra maior, alinhada à direita
     
     public TextMeshProUGUI textoResultado;   // o TextoResultado do Canvas
@@ -25,6 +26,7 @@ public class DebugHUD : MonoBehaviour
         arma = GetComponentInChildren<Weapon>(true);
         // se houver mais do que uma arma, é o Troca Arma (neste mesmo objeto) que diz qual está na mão
         trocaArma = GetComponent<TrocaArma>();
+        dispositivo = GetComponent<DispositivoHack>();
     }
 
     void Update()
@@ -78,7 +80,10 @@ public class DebugHUD : MonoBehaviour
             if (nomeArma != "") nomeArma += " · ";
         }
 
-        if (armaNaMao != null)
+        // com o dispositivo das câmaras aberto a arma está em baixo: as balas saem, para não ficarem por cima do ecrã
+        bool dispositivoAberto = dispositivo != null && dispositivo.aberto;
+
+        if (armaNaMao != null && !dispositivoAberto)
         {
             if (estiloBalas == null)
                 estiloBalas = new GUIStyle(GUI.skin.label) { fontSize = 22, fontStyle = FontStyle.Bold, alignment = TextAnchor.LowerRight };

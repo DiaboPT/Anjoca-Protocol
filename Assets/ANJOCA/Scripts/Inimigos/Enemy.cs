@@ -139,6 +139,8 @@ public class Enemy : MonoBehaviour, IOuvinte
    public float tempoVigiar = 20f;
    // o 2.º a ouvir o aviso vai X metros para lá de onde estás, para te cortar a fuga
    public float distanciaFlanco = 6f;
+   // a perseguir-te ou à tua procura: um tiro ou passos teus a menos de X metros fazem-no parar e virar-se para lá
+   public float distanciaVirarRuido = 6f;
 
    [Header("Enemy Animation and Spark Effect")]
    public Animator anim;
@@ -282,9 +284,13 @@ public class Enemy : MonoBehaviour, IOuvinte
    private bool aFlanquear = false;           // vai para o outro lado de onde estás, em vez de direito a ti
    private Vector3 pontoVigiar;
    private float fimVigiar = 0f;
+   private Vector3 pontoVirarRuido;           // um barulho teu mesmo ao lado, a perseguir: vira-se para lá
+   private float fimVirarRuido = -10f;
    // quem está a disparar agora (todos os soldados da cena partilham esta lista)
    private static readonly List<Enemy> atiradores = new List<Enemy>();
    public bool TemVezDeDisparar => atiradores.Contains(this);
+   // vê-te, está perto e não está a recarregar, mas já há outros a disparar (é isto que o F2 mostra como "à espera")
+   private bool aEsperarVez = false;
 
    private void Awake()
    {
@@ -536,12 +542,15 @@ public class Enemy : MonoBehaviour, IOuvinte
 
       fimVigiar = 0f;
       aFlanquear = false;
+      aEsperarVez = false;
       // "Está ali!": os colegas perto ficam a saber onde estás
       Avisar();
    }
 
    private void AtualizarCombate()
    {
+      aEsperarVez = false;
+
       // perdeu-te de vista: espera um instante (podes só ter passado atrás de um pilar) e depois vai atrás de ti
       if (!percecao.VeAgora)
       {
@@ -579,7 +588,11 @@ public class Enemy : MonoBehaviour, IOuvinte
 
       // perto o suficiente: para e dispara, se tiver a vez. Senão aponta e espera
       if (!aRecarregar && PedirVez()) ShootPlayer();
-      else EsperarVez();
+      else
+      {
+         aEsperarVez = !aRecarregar;
+         EsperarVez();
+      }
    }
 
    // ---------- Vez de disparar: só "atiradoresAoMesmoTempo" disparam ao mesmo tempo ----------
@@ -636,6 +649,14 @@ public class Enemy : MonoBehaviour, IOuvinte
 
    private void AtualizarPerseguir()
    {
+      // ouviu-te mesmo ao lado: para um instante e vira-se para o barulho (se estiveres lá, vê-te)
+      if (Time.time < fimVirarRuido)
+      {
+         Parar();
+         VirarPara(pontoVirarRuido, 540f);
+         return;
+      }
+
       // janela de intuição: ainda sabe para onde foste (viu-te dobrar a esquina)
       if (Time.time < fimIntuicao)
       {
@@ -1108,6 +1129,13 @@ public class Enemy : MonoBehaviour, IOuvinte
                if (!ConsegueChegar(ponto)) return false;
                // já anda atrás de ti: é uma pista nova. O Perseguir recalcula o ponto, o Procurar volta a Perseguir
                percecao.RegistarPista(ponto, Vector3.zero);
+               // mesmo ao lado (um tiro a 2 m): para e vira-se para lá, em vez de continuar de costas para ti.
+               // No máximo uma vez a cada 2 s, para uma rajada atrás de uma parede não o deixar pregado
+               if (distancia <= distanciaVirarRuido && Time.time >= fimVirarRuido + 1.5f)
+               {
+                  pontoVirarRuido = ponto;
+                  fimVirarRuido = Time.time + 0.5f;
+               }
                return true;
             }
             return IrVerBarulho(ponto, ponto, ruido.tipo == TipoRuido.Tiro ? tempoProcura : tempoProcuraCurta, (int)ruido.tipo);
@@ -1152,8 +1180,8 @@ public class Enemy : MonoBehaviour, IOuvinte
       return true;
    }
 
-   // há caminho a pé até lá? Um caminho parcial serve se acabar perto e no mesmo piso
-   // (uma porta fechada, um móvel), não se acabar no piso de cima ou de baixo
+   // há caminho a pé até lá? Um caminho parcial no mesmo piso serve: vai até onde der (por exemplo,
+   // até à porta trancada, do lado de dentro). Um caminho que acaba no piso de cima ou de baixo não serve
    private bool ConsegueChegar(Vector3 ponto)
    {
       if (enemyAgent == null || !enemyAgent.isOnNavMesh) return false;
@@ -1165,10 +1193,7 @@ public class Enemy : MonoBehaviour, IOuvinte
       Vector3[] cantos = caminhoTeste.corners;
       if (cantos.Length == 0) return false;
       Vector3 fim = cantos[cantos.Length - 1];
-      Vector3 falta = noChao.position - fim;
-      if (Mathf.Abs(falta.y) > 1.5f) return false;
-      falta.y = 0f;
-      return falta.sqrMagnitude <= 9f;
+      return Mathf.Abs(noChao.position.y - fim.y) <= 1.5f;
    }
 
    // fica parado, virado para um ponto, mais atento (o AtualizarCalmo trata do resto)
@@ -1276,7 +1301,7 @@ public class Enemy : MonoBehaviour, IOuvinte
       {
          case EstadoInimigo.Combate:
             // em combate mas sem a vez de disparar (já há outros a disparar)
-            if (!TemVezDeDisparar) return "<color=#ff9090>à espera" + m + "</color>";
+            if (aEsperarVez) return "<color=#ff9090>à espera" + m + "</color>";
             return "<color=red>combate" + m + "</color>";
          case EstadoInimigo.Perseguir:   return "<color=orange>perseguir" + m + "</color>";
          case EstadoInimigo.Procurar:    return "<color=orange>procurar" + m + "</color>";

@@ -21,8 +21,12 @@ public class QuadroEletrico : MonoBehaviour
     public GameObject[] luzesDaAla;
     // objetos que se ativam no corte: as luzes de emergência (vermelhas e fracas). Começam desativados
     public GameObject[] luzesEmergencia;
-    // câmaras de vigilância da ala: ficam desligadas até ao fim do nível
-    public CamaraVigilancia[] camaras;
+    // câmaras das guaritas (CamaraVigilancia) da ala: ficam desligadas até ao fim do nível.
+    // FormerlySerializedAs: o campo chamava-se "camaras"; assim não perdes o que já tinhas arrastado
+    [FormerlySerializedAs("camaras")]
+    public CamaraVigilancia[] camarasGuaritas;
+    // câmaras que o dispositivo hackeia (CamaraHack) na ala: ficam sem imagem ("SEM SINAL") até ao fim do nível
+    public CamaraHack[] camarasHackeaveis;
     // o trigger (Box Collider com Is Trigger) de cada estação de energia da ala: sem ele, não carrega.
     // FormerlySerializedAs: o campo chamava-se "terminais"; assim não perdes o que já tinhas arrastado
     [FormerlySerializedAs("terminais")]
@@ -138,8 +142,11 @@ public class QuadroEletrico : MonoBehaviour
             if (luz != null) luz.SetActive(true);
 
         // Mathf.Infinity = até ao fim do nível
-        foreach (CamaraVigilancia camara in camaras)
+        foreach (CamaraVigilancia camara in camarasGuaritas)
             if (camara != null) camara.Desligar(Mathf.Infinity);
+
+        foreach (CamaraHack camara in camarasHackeaveis)
+            if (camara != null) camara.CortarEnergia();
 
         foreach (Collider estacao in estacoesDeEnergia)
         {
